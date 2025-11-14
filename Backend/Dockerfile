@@ -1,17 +1,25 @@
 # ------------ BUILD STAGE ------------
-FROM maven:3.9.3-eclipse-temurin-20 AS build
+FROM eclipse-temurin:17-jdk AS build
 
 WORKDIR /app
 
+# Copy Maven wrapper and pom.xml
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
 
+# Download dependencies
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline -B || true
+
+# Copy the source code
 COPY src ./src
-RUN mvn clean package -DskipTests
 
+# Build the Spring Boot application
+RUN ./mvnw clean package -DskipTests
 
 # ------------ RUNTIME STAGE ------------
-FROM eclipse-temurin:20-jre
+FROM eclipse-temurin:17-jre
 
 WORKDIR /app
 
@@ -19,6 +27,4 @@ COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
-ENV JAVA_OPTS=""
-
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
